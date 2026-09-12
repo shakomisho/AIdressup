@@ -1,0 +1,17 @@
+# Python 3.11+ (tested on 3.14). Lower bounds, not hard pins, so the stack
+# stays installable on new interpreters that need fresher wheels.
+fastapi>=0.118,<1.0
+uvicorn[standard]>=0.37,<1.0
+sqlalchemy>=2.0.43,<3.0
+pydantic>=2.12,<3.0
+pydantic-settings>=2.12,<3.0
+python-multipart>=0.0.20
+Pillow>=11.3
+aiofiles>=24.1
+
+# --- Phase 2 (AI try-on). Heavy; install on demand, see models/README.md. ---
+# torch>=2.8
+# diffusers>=0.35
+# transformers>=4.57
+# accelerate>=1.10
+# onnxruntime>=1.23

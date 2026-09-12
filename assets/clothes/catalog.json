@@ -1,0 +1,297 @@
+{
+  "$comment": "Overlay calibration per garment. scale_multiplier = PNG width / landmark reference distance (shoulder span, hip span, head width, foot length). pivot_* = landmark anchor position inside the PNG.",
+  "items": [
+    {
+      "slug": "shirt-white-tee",
+      "name": "White Tee",
+      "brand": "Basics",
+      "color": "white",
+      "tags": [
+        "tee",
+        "casual"
+      ],
+      "anchor_type": "torso",
+      "scale_multiplier": 2.3043,
+      "offset_x": 0.0,
+      "offset_y": -0.02,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.1389,
+      "opacity": 1.0,
+      "z_index": 10
+    },
+    {
+      "slug": "shirt-black-tee",
+      "name": "Black Tee",
+      "brand": "Basics",
+      "color": "black",
+      "tags": [
+        "tee",
+        "casual"
+      ],
+      "anchor_type": "torso",
+      "scale_multiplier": 2.3043,
+      "offset_x": 0.0,
+      "offset_y": -0.02,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.1389,
+      "opacity": 1.0,
+      "z_index": 10
+    },
+    {
+      "slug": "shirt-indigo-tee",
+      "name": "Indigo Tee",
+      "brand": "Northline",
+      "color": "indigo",
+      "tags": [
+        "tee"
+      ],
+      "anchor_type": "torso",
+      "scale_multiplier": 2.3043,
+      "offset_x": 0.0,
+      "offset_y": -0.02,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.1389,
+      "opacity": 1.0,
+      "z_index": 10
+    },
+    {
+      "slug": "shirt-crimson-tee",
+      "name": "Crimson Tee",
+      "brand": "Northline",
+      "color": "red",
+      "tags": [
+        "tee"
+      ],
+      "anchor_type": "torso",
+      "scale_multiplier": 2.3043,
+      "offset_x": 0.0,
+      "offset_y": -0.02,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.1389,
+      "opacity": 1.0,
+      "z_index": 10
+    },
+    {
+      "slug": "shirt-sage-longsleeve",
+      "name": "Sage Long Sleeve",
+      "brand": "Atelier",
+      "color": "green",
+      "tags": [
+        "longsleeve"
+      ],
+      "anchor_type": "torso",
+      "scale_multiplier": 2.3043,
+      "offset_x": 0.0,
+      "offset_y": -0.02,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.1389,
+      "opacity": 1.0,
+      "z_index": 10
+    },
+    {
+      "slug": "jacket-denim-jacket",
+      "name": "Denim Jacket",
+      "brand": "Northline",
+      "color": "blue",
+      "tags": [
+        "denim"
+      ],
+      "anchor_type": "torso",
+      "scale_multiplier": 2.332,
+      "offset_x": 0.0,
+      "offset_y": -0.02,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.1391,
+      "opacity": 1.0,
+      "z_index": 20
+    },
+    {
+      "slug": "jacket-olive-bomber",
+      "name": "Olive Bomber",
+      "brand": "Atelier",
+      "color": "olive",
+      "tags": [
+        "bomber"
+      ],
+      "anchor_type": "torso",
+      "scale_multiplier": 2.332,
+      "offset_x": 0.0,
+      "offset_y": -0.02,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.1391,
+      "opacity": 1.0,
+      "z_index": 20
+    },
+    {
+      "slug": "pant-blue-jeans",
+      "name": "Blue Jeans",
+      "brand": "Northline",
+      "color": "blue",
+      "tags": [
+        "denim"
+      ],
+      "anchor_type": "hips",
+      "scale_multiplier": 2.7,
+      "offset_x": 0.0,
+      "offset_y": -0.04,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.0643,
+      "opacity": 1.0,
+      "z_index": 5
+    },
+    {
+      "slug": "pant-charcoal-chinos",
+      "name": "Charcoal Chinos",
+      "brand": "Basics",
+      "color": "charcoal",
+      "tags": [
+        "chinos"
+      ],
+      "anchor_type": "hips",
+      "scale_multiplier": 2.7,
+      "offset_x": 0.0,
+      "offset_y": -0.04,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.0643,
+      "opacity": 1.0,
+      "z_index": 5
+    },
+    {
+      "slug": "pant-sand-shorts",
+      "name": "Sand Shorts",
+      "brand": "Basics",
+      "color": "sand",
+      "tags": [
+        "shorts"
+      ],
+      "anchor_type": "hips",
+      "scale_multiplier": 2.7,
+      "offset_x": 0.0,
+      "offset_y": -0.04,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.1184,
+      "opacity": 1.0,
+      "z_index": 5
+    },
+    {
+      "slug": "hat-navy-cap",
+      "name": "Navy Cap",
+      "brand": "Basics",
+      "color": "navy",
+      "tags": [
+        "cap"
+      ],
+      "anchor_type": "head",
+      "scale_multiplier": 2.0,
+      "offset_x": 0.0,
+      "offset_y": -0.26,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.6774,
+      "opacity": 1.0,
+      "z_index": 30
+    },
+    {
+      "slug": "hat-grey-beanie",
+      "name": "Grey Beanie",
+      "brand": "Atelier",
+      "color": "grey",
+      "tags": [
+        "beanie"
+      ],
+      "anchor_type": "head",
+      "scale_multiplier": 1.4676,
+      "offset_x": 0.0,
+      "offset_y": -0.26,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.7031,
+      "opacity": 1.0,
+      "z_index": 30
+    },
+    {
+      "slug": "glasses-rayban-wayfarer",
+      "name": "Ray-Ban Wayfarer",
+      "brand": "Ray-Ban",
+      "color": "black",
+      "tags": [
+        "sunglasses",
+        "wayfarer"
+      ],
+      "anchor_type": "eyes",
+      "scale_multiplier": 1.5901,
+      "offset_x": 0.0,
+      "offset_y": 0.0,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.4737,
+      "opacity": 1.0,
+      "z_index": 28
+    },
+    {
+      "slug": "glasses-rayban-aviator",
+      "name": "Ray-Ban Aviator",
+      "brand": "Ray-Ban",
+      "color": "gold",
+      "tags": [
+        "sunglasses",
+        "aviator"
+      ],
+      "anchor_type": "eyes",
+      "scale_multiplier": 1.5901,
+      "offset_x": 0.0,
+      "offset_y": 0.0,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.5,
+      "pivot_y": 0.4737,
+      "opacity": 1.0,
+      "z_index": 28
+    },
+    {
+      "slug": "shoe-white-sneaker",
+      "name": "White Sneakers",
+      "brand": "Runline",
+      "color": "white",
+      "tags": [
+        "sneaker"
+      ],
+      "anchor_type": "feet",
+      "scale_multiplier": 1.9712,
+      "offset_x": 0.0,
+      "offset_y": -0.12,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.2561,
+      "pivot_y": 0.587,
+      "opacity": 1.0,
+      "z_index": 25
+    },
+    {
+      "slug": "shoe-black-sneaker",
+      "name": "Black Sneakers",
+      "brand": "Runline",
+      "color": "black",
+      "tags": [
+        "sneaker"
+      ],
+      "anchor_type": "feet",
+      "scale_multiplier": 1.9712,
+      "offset_x": 0.0,
+      "offset_y": -0.12,
+      "rotation_offset": 0.0,
+      "pivot_x": 0.2561,
+      "pivot_y": 0.587,
+      "opacity": 1.0,
+      "z_index": 25
+    }
+  ]
+}

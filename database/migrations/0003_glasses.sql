@@ -1,0 +1,20 @@
+-- 0003_glasses — the `glasses` category and the `eyes` anchor type.
+--
+-- No columns change. Both new values are widenings of existing CHECK
+-- constraints, and those constraints only exist in a database built from the
+-- hand-written database/schema.sql: SQLAlchemy's Enum defaults to
+-- create_constraint=False, so in a database built by init_db.py `category` and
+-- `anchor_type` are plain VARCHARs and the new values just work.
+--
+-- So there is nothing to run here:
+--
+--   built by init_db.py     -> no action; restart the API and the catalog sync
+--                              picks up assets/clothes/glasses/ on boot.
+--   built from schema.sql   -> SQLite cannot ALTER a CHECK in place. Rebuild
+--                              with `make clean && make db`. Inserting a
+--                              glasses row without rebuilding fails with
+--                              "CHECK constraint failed: clothing_items".
+--
+-- PostgreSQL, if these were created as native enum types:
+--   ALTER TYPE category   ADD VALUE IF NOT EXISTS 'glasses';
+--   ALTER TYPE anchortype ADD VALUE IF NOT EXISTS 'eyes';
