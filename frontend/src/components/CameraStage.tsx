@@ -109,6 +109,9 @@ export function CameraStage({ sessionId, onStats }: Props) {
         pose_landmarks: tracker.landmarksRef.current
           ? { landmarks: tracker.landmarksRef.current }
           : undefined,
+        // Server-side relighting has to follow the toggle, or a generated
+        // image comes back looking different from the preview it was taken from.
+        params: { light_match: useSettings.getState().lightMatch },
       });
       setAiResult(result);
 

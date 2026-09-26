@@ -189,7 +189,13 @@ Static: `/assets/clothes/**` (garments + `.thumbs/`), `/outputs/**` (results).
 
 Every frame, `usePoseOverlay` does: `detectForVideo` → One Euro smoothing →
 `effectiveOverlay` (garment calibration × user fit sliders) → `solvePlacements` →
-`drawGarment` → `drawSkeleton`.
+`drawGarment` into an offscreen `GarmentLayer` → light match → silhouette clip →
+composite → `drawSkeleton`.
+
+Garments go through a layer rather than straight to the canvas because both realism
+passes need the *finished* sprite. A tint has to land on the composed garment, and the
+silhouette clip has to mask everything worn as one shape — masking each item
+separately would let a jacket clip against the shirt's edge underneath it.
 
 Two things are worth knowing before you touch the geometry:
 
@@ -209,6 +215,19 @@ mirror-invariant. `test_eyes_anchor_is_mirror_equivariant` pins that down.
 
 **Shoes mirror, they don't rotate.** A left shoe is a reflected right shoe, so
 `Placement` carries a `mirror` flag; the pivot is mirrored too (`1 − pivot_x`).
+
+**Occlusion clips to the silhouette — it is not per-body-part.** MediaPipe's
+segmentation mask separates *person from background*, so it stops a garment spilling
+past your shoulders onto the wall. It cannot hide a shirt behind your forearm, because
+the forearm is inside the same silhouette. Arm-over-torso ordering needs depth; see the
+roadmap.
+
+**Light match is mirrored server-side; occlusion is not.** `sample_scene_light` in
+`overlay_engine.py` reproduces `lighting.ts` constant for constant, so a generated
+image matches the preview it was captured from — `CameraStage` sends `light_match` in
+`params` for exactly that reason, and it is part of the cache key. The silhouette mask
+has no server twin: it comes out of the browser's MediaPipe graph, and shipping a
+full-resolution mask per request to reproduce it is not worth the bytes.
 
 Scale is a reference landmark distance in pixels — shoulder span, hip span, ear span,
 outer-eye span, ankle→toe length — times the garment's `scale_multiplier`. Step toward the camera and the
@@ -246,6 +265,29 @@ t-shirt, the middle of the collar, roughly `0.5, 0.08`.
 - [x] Server-side overlay engine producing identical output
 - [x] Fit sliders, engine picker, cache stats, diagnostics
 - [x] SQLite schema, FastAPI endpoints, Docker, tests
+- [x] Silhouette occlusion — garments clip to the person mask
+- [x] Light match — garments shaded and tinted to the room
+
+### Phase 1.5 — Believable cloth (in progress)
+
+Diffusion cannot run at 30 FPS, so the live view will never be made realistic by AI.
+These steps are geometry and compositing, and they run on any laptop, offline.
+
+1. [x] **Silhouette occlusion.** Clip to MediaPipe's person mask.
+2. [x] **Light match.** Sample the frame's mean colour, shade and tint the garment.
+3. [ ] **Mesh warp.** Replace the rigid rotate-and-scale with a landmark-driven
+   triangle mesh, so the garment shears when the body does. The single biggest jump
+   available without a neural network — a rigid sprite is what reads as a sticker.
+4. [ ] **Rig schema.** Extend `catalog.json` with garment regions (torso / sleeves /
+   hem) and pin points. The asset format, not the algorithm, is what currently blocks
+   per-part motion: a flat PNG has nothing that says "this part is a sleeve".
+5. [ ] **Verlet cloth.** A few hundred particles pinned to the rig, with gravity and
+   damping, so the hem keeps swinging after you stop moving. Secondary motion is what
+   makes a brain read cloth instead of a decal. Needs 3 and 4 first.
+6. [ ] **Monocular depth.** Depth Anything V2 in-browser at 5–10 Hz against pose at 30.
+   Upgrades the mesh warp into surface projection, gives the cloth solver a collider,
+   and makes occlusion a z-test rather than a silhouette. On a rigid sprite depth buys
+   almost nothing; on a mesh it is a multiplier — hence the ordering.
 
 ### Phase 2 — AI try-on (next)
 

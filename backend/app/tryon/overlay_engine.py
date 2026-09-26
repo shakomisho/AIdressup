@@ -16,6 +16,14 @@ from PIL import Image
 
 from .base import TryOnEngine, TryOnInput, TryOnOutput
 
+# Scene-light constants. These must match frontend/src/lib/lighting.ts exactly,
+# or a server-rendered try-on will not match the live preview it was captured
+# from — the whole point of this engine being a twin of anchors.ts.
+TINT_STRENGTH = 0.18
+MIN_BRIGHTNESS = 0.7
+MAX_BRIGHTNESS = 1.15
+LIGHT_GRID = 32
+
 # MediaPipe Pose (BlazePose 33-point) indices we care about.
 L_EYE_OUTER, R_EYE_OUTER = 3, 6
 L_EAR, R_EAR = 7, 8
@@ -181,6 +189,50 @@ def _wrap(deg: float) -> float:
     return ((deg + 180.0) % 360.0) - 180.0
 
 
+def sample_scene_light(person: Image.Image) -> tuple[float, tuple[int, int, int]]:
+    """Mean colour of the frame, as (brightness multiplier, tint RGB).
+
+    Twin of ``sampleSceneLight`` in ``frontend/src/lib/lighting.ts``.
+    """
+    small = person.convert("RGB").resize((LIGHT_GRID, LIGHT_GRID), Image.BILINEAR)
+    # One more 1x1 resize is the cheapest mean available and avoids walking the
+    # pixels in Python at all.
+    r, g, b = small.resize((1, 1), Image.BOX).convert("RGB").getpixel((0, 0))
+
+    luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0
+    brightness = min(max(0.55 + luma * 0.9, MIN_BRIGHTNESS), MAX_BRIGHTNESS)
+
+    # Normalise to full value: the tint carries hue only, because brightness
+    # has already accounted for how dark the room is.
+    peak = max(r, g, b, 1.0)
+    scale = 255.0 / peak
+    tint = (round(r * scale), round(g * scale), round(b * scale))
+    return brightness, tint
+
+
+def _relight(
+    garment: Image.Image, brightness: float, tint: tuple[int, int, int]
+) -> Image.Image:
+    """Shade and tint a garment, leaving its alpha untouched.
+
+    Alpha is split off first: Pillow's enhancers and blends operate on every
+    band, so running them on RGBA would scale transparency along with colour
+    and eat the cut-out.
+    """
+    rgb = garment.convert("RGBA")
+    alpha = rgb.getchannel("A")
+    body = rgb.convert("RGB")
+
+    if brightness != 1.0:
+        body = body.point(lambda v: min(255, max(0, int(v * brightness))))
+    if TINT_STRENGTH > 0:
+        body = Image.blend(body, Image.new("RGB", body.size, tint), TINT_STRENGTH)
+
+    body = body.convert("RGBA")
+    body.putalpha(alpha)
+    return body
+
+
 def composite(
     person: Image.Image,
     garment: Image.Image,
@@ -235,6 +287,12 @@ class OverlayEngine(TryOnEngine):
             return TryOnOutput(buf.getvalue(), meta={"placed": 0, "reason": "no_landmarks"})
 
         garment = Image.open(payload.garment_path).convert("RGBA")
+        meta: dict = {}
+        if params.get("light_match"):
+            brightness, tint = sample_scene_light(person)
+            garment = _relight(garment, brightness, tint)
+            meta["light"] = {"brightness": round(brightness, 3), "tint": tint}
+
         placements = solve_placements(
             pts,
             person.width,
@@ -255,12 +313,14 @@ class OverlayEngine(TryOnEngine):
         )
         buf = io.BytesIO()
         result.save(buf, format="PNG")
-        return TryOnOutput(buf.getvalue(), meta={"placed": len(placements)})
+        return TryOnOutput(buf.getvalue(), meta={"placed": len(placements), **meta})
 
     def cache_key_parts(self, payload: TryOnInput) -> list[str]:
         params = payload.params or {}
+        # light_match belongs here: the same garment on the same frame renders
+        # differently with it on, so omitting it would serve a stale image.
         keys = ("anchor_type", "scale_multiplier", "offset_x", "offset_y",
-                "rotation_offset", "pivot_x", "pivot_y", "opacity")
+                "rotation_offset", "pivot_x", "pivot_y", "opacity", "light_match")
         return [self.name, *(f"{k}={params.get(k)}" for k in keys)]
 
 

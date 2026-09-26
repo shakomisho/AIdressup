@@ -11,7 +11,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { effectiveOverlay, solvePlacements } from '@/lib/anchors';
-import { clear, drawGarment, drawSkeleton } from '@/lib/draw';
+import { clear, drawGarment, drawSkeleton, GarmentLayer } from '@/lib/draw';
+import { NEUTRAL_LIGHT, sampleSceneLight, type SceneLight } from '@/lib/lighting';
 import { createPoseLandmarker, type PoseLandmarker } from '@/lib/pose';
 import { FpsMeter, PoseSmoother } from '@/lib/smoothing';
 import type { Landmark } from '@/lib/types';
@@ -55,10 +56,14 @@ export function usePoseOverlay({ videoRef, canvasRef, enabled }: Options): Resul
   const vfcRef = useRef<number | null>(null);
   const lastTimestampRef = useRef(-1);
   const disposedRef = useRef(false);
+  const layerRef = useRef<GarmentLayer | null>(null);
+  const lightRef = useRef<SceneLight>(NEUTRAL_LIGHT);
+  const lightSampledAtRef = useRef(0);
 
   const modelVariant = useSettings((s) => s.modelVariant);
   const delegate = useSettings((s) => s.delegate);
   const smoothing = useSettings((s) => s.smoothing);
+  const occlusion = useSettings((s) => s.occlusion);
 
   useEffect(() => {
     smootherRef.current.setStrength(smoothing);
@@ -71,7 +76,7 @@ export function usePoseOverlay({ videoRef, canvasRef, enabled }: Options): Resul
     setStatus('loading');
     setError(null);
 
-    createPoseLandmarker({ variant: modelVariant, delegate })
+    createPoseLandmarker({ variant: modelVariant, delegate, segmentation: occlusion })
       .then((landmarker) => {
         if (cancelled) {
           landmarker.close();
@@ -99,7 +104,7 @@ export function usePoseOverlay({ videoRef, canvasRef, enabled }: Options): Resul
       landmarkerRef.current?.close();
       landmarkerRef.current = null;
     };
-  }, [modelVariant, delegate]);
+  }, [modelVariant, delegate, occlusion]);
 
   // ---- the loop ----------------------------------------------------------
   const renderFrame = useCallback(() => {
@@ -122,18 +127,45 @@ export function usePoseOverlay({ videoRef, canvasRef, enabled }: Options): Resul
     if (timestamp <= lastTimestampRef.current) timestamp = lastTimestampRef.current + 1;
     lastTimestampRef.current = timestamp;
 
+    const settings = useSettings.getState();
+
     const t0 = performance.now();
     let raw: Landmark[] | null = null;
+    let silhouette: { data: Uint8Array; width: number; height: number } | null = null;
+    // MediaPipe owns the mask buffer and recycles it, so the pixels have to be
+    // read and the handle closed inside this frame.
+    let maskHandle: { close(): void } | null = null;
     try {
       const result = landmarker.detectForVideo(video, timestamp);
       raw = (result.landmarks?.[0] as Landmark[] | undefined) ?? null;
+      const mask = result.segmentationMasks?.[0];
+      if (mask) {
+        maskHandle = mask;
+        silhouette = {
+          data: mask.getAsUint8Array(),
+          width: mask.width,
+          height: mask.height,
+        };
+      }
     } catch {
       // A dropped frame is not worth tearing the session down.
       return;
+    } finally {
+      maskHandle?.close();
     }
     const inference = performance.now() - t0;
 
-    const settings = useSettings.getState();
+    // Room lighting does not change at 30 FPS, and getImageData is the most
+    // expensive call in the loop — resample a few times a second instead.
+    if (settings.lightMatch) {
+      if (timestamp - lightSampledAtRef.current > 200) {
+        lightSampledAtRef.current = timestamp;
+        lightRef.current = sampleSceneLight(video);
+      }
+    } else {
+      lightRef.current = NEUTRAL_LIGHT;
+    }
+
     clear(ctx);
 
     if (raw) {
@@ -141,19 +173,35 @@ export function usePoseOverlay({ videoRef, canvasRef, enabled }: Options): Resul
       landmarksRef.current = smoothed;
 
       if (settings.showClothing) {
-        const wardrobe = useWardrobe.getState();
-        for (const item of wardrobe.wornItems()) {
-          const sprite = wardrobe.sprites.get(item.id);
-          if (!sprite?.complete || !sprite.naturalWidth) continue;
-          const cfg = effectiveOverlay(item.overlay, settings);
-          const placements = solvePlacements(
-            smoothed,
-            vw,
-            vh,
-            cfg,
-            settings.visibilityThreshold,
-          );
-          if (placements.length) drawGarment(ctx, sprite, placements, cfg);
+        if (!layerRef.current) layerRef.current = new GarmentLayer();
+        const layer = layerRef.current;
+        const layerCtx = layer.begin(vw, vh);
+        const light = lightRef.current;
+        let drew = false;
+
+        if (layerCtx) {
+          const wardrobe = useWardrobe.getState();
+          for (const item of wardrobe.wornItems()) {
+            const sprite = wardrobe.sprites.get(item.id);
+            if (!sprite?.complete || !sprite.naturalWidth) continue;
+            const cfg = effectiveOverlay(item.overlay, settings);
+            const placements = solvePlacements(
+              smoothed,
+              vw,
+              vh,
+              cfg,
+              settings.visibilityThreshold,
+            );
+            if (!placements.length) continue;
+            drawGarment(layerCtx, sprite, placements, cfg, light.brightness);
+            drew = true;
+          }
+        }
+
+        if (drew) {
+          layer.applyLight(light);
+          if (settings.occlusion && silhouette) layer.applyMask(silhouette);
+          layer.commit(ctx);
         }
       }
 

@@ -20,6 +20,10 @@ export interface SettingsState {
   showClothing: boolean;
   showFps: boolean;
   mirror: boolean;
+  /** Clip garments to the person silhouette (costs a segmentation mask per frame). */
+  occlusion: boolean;
+  /** Shade and tint garments toward the room's light. */
+  lightMatch: boolean;
   // --- pose engine ---
   modelVariant: ModelVariant;
   delegate: Delegate;
@@ -44,6 +48,8 @@ export const DEFAULTS = {
   showClothing: true,
   showFps: true,
   mirror: true,
+  occlusion: true,
+  lightMatch: true,
   modelVariant: 'lite' as ModelVariant,
   delegate: 'GPU' as Delegate,
   smoothing: 0.6,
@@ -62,6 +68,8 @@ const SERVER_KEYS = [
   'showClothing',
   'showFps',
   'mirror',
+  'occlusion',
+  'lightMatch',
   'modelVariant',
   'delegate',
   'smoothing',

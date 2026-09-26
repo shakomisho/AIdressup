@@ -58,6 +58,18 @@ export function SettingsPanel({ stats }: Props) {
         />
         <Toggle label="Clothing" checked={s.showClothing} onChange={(v) => s.set('showClothing', v)} />
         <Toggle
+          label="Occlusion"
+          hint="Clip garments to your silhouette"
+          checked={s.occlusion}
+          onChange={(v) => s.set('occlusion', v)}
+        />
+        <Toggle
+          label="Light match"
+          hint="Shade garments to the room"
+          checked={s.lightMatch}
+          onChange={(v) => s.set('lightMatch', v)}
+        />
+        <Toggle
           label="Mirror"
           hint="Selfie view"
           checked={s.mirror}

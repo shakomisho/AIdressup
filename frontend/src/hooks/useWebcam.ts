@@ -40,6 +40,9 @@ export function useWebcam(
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [resolution, setResolution] = useState<{ width: number; height: number } | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // `getUserMedia` cannot be cancelled. This token makes a response from a
+  // previous start (including React Strict Mode's development remount) harmless.
+  const requestRef = useRef(0);
 
   const refreshDevices = useCallback(async () => {
     if (!navigator.mediaDevices?.enumerateDevices) return;
@@ -52,6 +55,7 @@ export function useWebcam(
   }, []);
 
   const stop = useCallback(() => {
+    requestRef.current += 1;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
@@ -61,11 +65,17 @@ export function useWebcam(
 
   const start = useCallback(
     async (requestedId?: string) => {
+      if (!window.isSecureContext) {
+        setStatus('error');
+        setError('Camera access requires HTTPS, or opening this app on localhost.');
+        return;
+      }
       if (!navigator.mediaDevices?.getUserMedia) {
         setStatus('error');
         setError('This browser does not expose getUserMedia. Use Chrome, Edge or Safari.');
         return;
       }
+      const requestId = ++requestRef.current;
       setStatus('requesting');
       setError(null);
       streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -76,6 +86,10 @@ export function useWebcam(
             : { ...CONSTRAINTS, facingMode: 'user' },
           audio: false,
         });
+        if (requestId !== requestRef.current) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
         streamRef.current = stream;
         const video = videoRef.current;
         if (video) {
@@ -91,6 +105,7 @@ export function useWebcam(
         setStatus('live');
         await refreshDevices(); // labels are only exposed after permission
       } catch (err) {
+        if (requestId !== requestRef.current) return;
         const name = err instanceof DOMException ? err.name : '';
         if (name === 'NotAllowedError' || name === 'SecurityError') {
           setStatus('denied');
@@ -118,6 +133,7 @@ export function useWebcam(
   useEffect(() => {
     if (autoStart) void start();
     return () => {
+      requestRef.current += 1;
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };

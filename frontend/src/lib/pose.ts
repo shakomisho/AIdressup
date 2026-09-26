@@ -47,6 +47,16 @@ export interface PoseOptions {
   numPoses?: number;
   minPoseDetectionConfidence?: number;
   minTrackingConfidence?: number;
+  /**
+   * Emit the person silhouette alongside the landmarks. Costs a few ms per
+   * frame, so it is only switched on when the occlusion setting wants it.
+   *
+   * The mask separates *person from background* — it is not a per-part
+   * segmentation. Clipping a garment to it stops the sprite spilling onto the
+   * background and past the shoulders; it cannot hide the shirt behind a
+   * forearm, because the forearm is inside the same silhouette.
+   */
+  segmentation?: boolean;
 }
 
 /**
@@ -74,7 +84,7 @@ export async function createPoseLandmarker(opts: PoseOptions): Promise<PoseLandm
       minPoseDetectionConfidence: opts.minPoseDetectionConfidence ?? 0.5,
       minPosePresenceConfidence: 0.5,
       minTrackingConfidence: opts.minTrackingConfidence ?? 0.5,
-      outputSegmentationMasks: false,
+      outputSegmentationMasks: opts.segmentation ?? false,
     });
   } catch (err) {
     if (delegate === 'GPU') {

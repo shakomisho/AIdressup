@@ -6,6 +6,7 @@
  * transform on both <video> and <canvas>, which keeps this math mirror-free.
  */
 import type { Placement } from './anchors';
+import type { SceneLight } from './lighting';
 import type { Landmark, OverlayConfig } from './types';
 
 /** BlazePose skeleton edges, grouped so each limb can get its own hue. */
@@ -73,12 +74,19 @@ export function drawSkeleton(
   }
 }
 
-/** Draw one garment sprite for each solved placement. */
+/**
+ * Draw one garment sprite for each solved placement.
+ *
+ * `brightness` shades the sprite toward the room's light level. It is a filter
+ * on the draw rather than a post-pass so it only touches this garment — a hat
+ * and a shirt can be lit differently once per-part lighting exists.
+ */
 export function drawGarment(
   ctx: CanvasRenderingContext2D,
   image: CanvasImageSource & { width: number; height: number },
   placements: Placement[],
   cfg: OverlayConfig,
+  brightness = 1,
 ): void {
   if (!image.width || !image.height) return;
   const aspect = image.height / image.width;
@@ -88,6 +96,7 @@ export function drawGarment(
     const h = w * aspect;
     ctx.save();
     ctx.globalAlpha = Math.min(Math.max(cfg.opacity, 0), 1);
+    if (brightness !== 1) ctx.filter = `brightness(${brightness.toFixed(3)})`;
     ctx.translate(p.cx, p.cy);
     ctx.rotate(p.angle);
     // Flip first, rotate second (the canvas applies transforms innermost-first),
@@ -95,6 +104,95 @@ export function drawGarment(
     if (p.mirror) ctx.scale(-1, 1);
     ctx.drawImage(image, -w * cfg.pivot_x, -h * cfg.pivot_y, w, h);
     ctx.restore();
+  }
+}
+
+/**
+ * Offscreen buffer every garment is drawn into before it reaches the screen.
+ *
+ * Going through a layer is what makes the two realism passes possible: a tint
+ * has to apply to the finished sprite rather than to each `drawImage`, and the
+ * silhouette clip has to mask all worn garments as one shape — masking them
+ * individually would let a jacket clip against a shirt's edge.
+ *
+ * Canvases are reused across frames; allocating two per frame at 30 FPS churns
+ * the GC badly enough to show up as jitter.
+ */
+export class GarmentLayer {
+  private readonly layer = document.createElement('canvas');
+  private readonly maskCanvas = document.createElement('canvas');
+  private maskImage: ImageData | null = null;
+
+  /** Clear and resize the buffer. Returns the context to draw garments into. */
+  begin(width: number, height: number): CanvasRenderingContext2D | null {
+    if (this.layer.width !== width || this.layer.height !== height) {
+      this.layer.width = width;
+      this.layer.height = height;
+    }
+    const ctx = this.layer.getContext('2d');
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, width, height);
+    return ctx;
+  }
+
+  /**
+   * Push the garment colour toward the scene light.
+   *
+   * `source-atop` paints only where the layer already has alpha, so the tint
+   * lands on the garment and nowhere else. `multiply` would have been more
+   * physically honest but it composites across the whole buffer, turning the
+   * transparent background opaque.
+   */
+  applyLight(light: SceneLight): void {
+    if (light.tintStrength <= 0) return;
+    const ctx = this.layer.getContext('2d');
+    if (!ctx) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.globalAlpha = light.tintStrength;
+    ctx.fillStyle = light.tint;
+    ctx.fillRect(0, 0, this.layer.width, this.layer.height);
+    ctx.restore();
+  }
+
+  /**
+   * Clip the layer to the person silhouette.
+   *
+   * `mask` is MediaPipe's confidence map at its own (small) resolution; the
+   * `destination-in` draw scales it up to video space and keeps only the
+   * garment pixels that land on the body.
+   */
+  applyMask(mask: { data: Uint8Array; width: number; height: number }): void {
+    const ctx = this.layer.getContext('2d');
+    if (!ctx || !mask.width || !mask.height) return;
+
+    if (
+      this.maskCanvas.width !== mask.width ||
+      this.maskCanvas.height !== mask.height ||
+      !this.maskImage
+    ) {
+      this.maskCanvas.width = mask.width;
+      this.maskCanvas.height = mask.height;
+      this.maskImage = new ImageData(mask.width, mask.height);
+    }
+    // Only alpha matters for destination-in; RGB is never sampled.
+    const out = this.maskImage.data;
+    for (let i = 0, p = 3; i < mask.data.length; i += 1, p += 4) {
+      out[p] = mask.data[i];
+    }
+    const maskCtx = this.maskCanvas.getContext('2d');
+    if (!maskCtx) return;
+    maskCtx.putImageData(this.maskImage, 0, 0);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(this.maskCanvas, 0, 0, this.layer.width, this.layer.height);
+    ctx.restore();
+  }
+
+  /** Composite the finished layer onto the visible canvas. */
+  commit(ctx: CanvasRenderingContext2D): void {
+    ctx.drawImage(this.layer, 0, 0);
   }
 }
 

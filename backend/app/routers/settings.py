@@ -25,6 +25,8 @@ DEFAULTS: dict = {
     "delegate": "GPU",
     "targetFps": 30,
     "showFps": True,
+    "occlusion": True,
+    "lightMatch": True,
     "engine": app_config.default_engine,
 }
 

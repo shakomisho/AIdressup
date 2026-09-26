@@ -325,6 +325,44 @@ def test_placement_solver(anchor, expected_count):
         assert 0 <= p.cx <= 640 * 1.5
 
 
+def test_scene_light_tracks_room_brightness():
+    from app.tryon.overlay_engine import sample_scene_light
+
+    dark, _ = sample_scene_light(Image.new("RGB", (64, 64), (18, 18, 20)))
+    bright, _ = sample_scene_light(Image.new("RGB", (64, 64), (236, 234, 230)))
+    assert dark < bright
+    # Clamped at both ends: a dim room shades a garment, it does not erase it.
+    assert 0.7 <= dark <= 1.15
+    assert 0.7 <= bright <= 1.15
+
+
+def test_scene_light_tint_carries_hue_not_level():
+    from app.tryon.overlay_engine import sample_scene_light
+
+    # A dim warm room and a bright warm room should agree on hue and differ
+    # only in brightness — otherwise the tint would darken the garment twice.
+    _, dim = sample_scene_light(Image.new("RGB", (64, 64), (80, 60, 40)))
+    _, lit = sample_scene_light(Image.new("RGB", (64, 64), (200, 150, 100)))
+    assert max(dim) == 255 and max(lit) == 255
+    assert abs(dim[0] - lit[0]) <= 2
+    assert dim[2] < dim[0]  # warm light stays warm
+
+
+def test_relight_preserves_the_cutout():
+    """Pillow enhancers touch every band, so a naive implementation would scale
+    alpha along with colour and quietly dissolve the garment's transparency."""
+    from app.tryon.overlay_engine import _relight
+
+    garment = Image.new("RGBA", (8, 8), (200, 60, 60, 255))
+    garment.putpixel((0, 0), (200, 60, 60, 0))  # one transparent pixel
+
+    out = _relight(garment, 0.8, (255, 200, 150))
+    assert out.getpixel((0, 0))[3] == 0
+    assert out.getpixel((4, 4))[3] == 255
+    # Darkened, and pushed toward the warm tint.
+    assert out.getpixel((4, 4))[0] < 200
+
+
 def test_placement_scales_with_shoulder_width():
     pts = _fake_pose()["landmarks"]
     narrow = solve_placements(pts, 640, 480, "torso", 2.0, 0, 0, 0)[0]
